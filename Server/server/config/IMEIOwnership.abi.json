@@ -84,14 +84,14 @@
     "name": "registerIMEI",
     "inputs": [
       {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "IMEIHash",
         "type": "bytes32",
         "internalType": "bytes32"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
       },
       {
         "name": "nonce",
@@ -130,6 +130,11 @@
         "internalType": "struct IMEIOwnership.TradeInfo",
         "components": [
           {
+            "name": "IMEIHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
             "name": "seller",
             "type": "address",
             "internalType": "address"
@@ -138,11 +143,6 @@
             "name": "buyer",
             "type": "address",
             "internalType": "address"
-          },
-          {
-            "name": "IMEIHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
           },
           {
             "name": "price",
@@ -241,6 +241,56 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "userNonce",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "DebugPacked",
+    "inputs": [
+      {
+        "name": "packed",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      },
+      {
+        "name": "msgHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "ethMsgHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "signer",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "error",

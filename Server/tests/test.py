@@ -1,29 +1,66 @@
+from fastapi.testclient import TestClient
+from web3 import Web3
 from eth_account import Account
 from eth_account.messages import encode_defunct
-from web3 import Web3
+from eth_utils import keccak
 
-# 서명자 개인 키 (테스트용)
-private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+from server.config.config import contract
+from server.main import app
 
-to_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-imei_hash = "0xabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabca"
-nonce = 1
+app = TestClient(app)
 
-# 해시 만들기 (Solidity와 동일하게)
-message = (
-    Web3.to_bytes(text="registerIMEI") +
-    Web3.to_bytes(hexstr=to_address) +
-    Web3.to_bytes(hexstr=imei_hash) +
-    nonce.to_bytes(32, byteorder='big')
-)
-message_hash = Web3.keccak(message)
+# to 만들기
+user = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+# imei_hash만들기
+imei_hash = keccak(text="IMEI: 123456789012345")
+# nonce 만들기
+nonce = contract.functions.userNonce(user).call() + 1
 
-# Ethereum Signed Message
-eth_message = encode_defunct(message_hash)
-signed_message = Account.sign_message(eth_message, private_key=private_key)
+#signature 만들기
+#method_bytes만들기
+method = "registerIMEI"
+method_bytes = method.encode('utf-8')
+#imei_bytes만들기
+imei_bytes = imei_hash
+#to_bytes만들기
+to_bytes = Web3.to_bytes(hexstr=user)
+#nonce_bytes만들기
+nonce_bytes = nonce.to_bytes((nonce.bit_length()+7) // 8 or 1, byteorder='big')
 
-# FastAPI 요청에 필요한 정보
-print("to:", to_address)
-print("imei_hash:", imei_hash)
-print("nonce:", nonce)
-print("signature:", signed_message.signature.hex())
+packed = method_bytes + imei_bytes + to_bytes + nonce_bytes
+msghash = keccak(packed)
+
+# EIP-191 prefix 붙이기 (Ethereum Signed Message)
+message = encode_defunct(msghash)
+
+# 서명
+user_private_key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+signed_message = Account.sign_message(message, user_private_key)
+signature = signed_message.signature
+
+# 서명자로부터 주소 복원
+recovered_address = Account.recover_message(message, signature=signature)
+
+# 비교 출력
+print("Expected address (user):   ", Web3.to_checksum_address(user))
+print("Recovered from signature:  ", recovered_address)
+
+# 검증
+if Web3.to_checksum_address(user) == recovered_address:
+    print("✅ Signature is valid and matches the expected user address.")
+else:
+    print("❌ Signature does NOT match the expected user address.")
+
+def test_registerIMEI():
+    params = {
+        "imei_hash": imei_hash.hex(),        # bytes32 → hex string
+        "to": user,                          # address
+        "nonce": nonce,                      # int
+        "signature": signature.hex(),        # bytes → hex string
+    }
+    response = app.post("/register", json=params)
+    print(response.status_code)
+    print(response.text)
+
+test_registerIMEI()
+
