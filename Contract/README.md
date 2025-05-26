@@ -1,6 +1,6 @@
 ## bash install.sh
 
-**to install dependencies
+**to install dependencies**
 
 
 ## Foundry
