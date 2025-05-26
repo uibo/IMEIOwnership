@@ -1,6 +1,6 @@
 ## bash install.sh
 
-**to install dependencies**
+**to install dependencies** and **if you install new library, must to add to forge-deps.txt**
 
 
 ## Foundry
