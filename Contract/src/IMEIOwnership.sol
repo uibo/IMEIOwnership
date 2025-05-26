@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IMEICurrency} from "../src/token.sol";
+import {IMEICurrency} from "../src/IMEICurrency.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract IMEIOwnership {
-    event DebugPacked(bytes packed, bytes32 msgHash, bytes32 ethMsgHash, address signer);
     struct TradeInfo {
-        bytes32 IMEIHash;
+        bytes32 imeiHash;
         address seller;
         address buyer;
         uint price;
@@ -29,11 +29,11 @@ contract IMEIOwnership {
         address seller;
         address buyer;
         uint256 price;
-        bool locked;
+        bool isPending;
     }
     mapping(address => uint256) public userNonce;
-    mapping(bytes32 => address) public IMEIHashToOwner;
-    mapping(bytes32 => Escrow) private IMEIHashToEscrow;
+    mapping(bytes32 => address) public imeiHashToOwner;
+    mapping(bytes32 => Escrow) private imeiHashToEscrow;
     address public contractOwner;
     IMEICurrency public token;
 
@@ -47,83 +47,85 @@ contract IMEIOwnership {
         _;
     }
 
-    modifier notRegistered(bytes32 IMEIHash) {
-        require(IMEIHashToOwner[IMEIHash] == address(0), "IMEI already registered");
+    modifier notRegistered(bytes32 imeiHash) {
+        require(imeiHashToOwner[imeiHash] == address(0), "IMEI already registered");
         _;
     }
 
-    function _requireIMEIOwner(bytes32 IMEIHash, address signer) view internal {
-        require(IMEIHashToOwner[IMEIHash] != address(0), "IMEI not found");
-        require(IMEIHashToOwner[IMEIHash] == signer, "Not IMEI owner");
+    function _onlyIMEIOwner(bytes32 imeiHash, address signer) view internal {
+        require(imeiHashToOwner[imeiHash] == signer, "Not IMEI owner");
     }
 
-    // 소유자 주소 조회
-    function getIMEIOwner(bytes32 IMEIHash) external view returns (address) {
-        return IMEIHashToOwner[IMEIHash];
+    function _validNonce(address user, uint nonce) internal {
+        require(nonce == userNonce[user] + 1, "Invalid nonce");
+        userNonce[user]++;
     }
 
-    // IMEI 소유자 등록
-    function registerIMEI(bytes32 IMEIHash, address to, uint nonce, bytes calldata signature) external onlyContractOwner notRegistered(IMEIHash) {
-        require(nonce == userNonce[to] + 1 , "Invalid nonce");
-        userNonce[to]++;
-        bytes memory packedMsg = abi.encodePacked("registerIMEI", IMEIHash, to, nonce);
-        bytes32 msgHash = keccak256(packedMsg);
-        bytes32 ethMsgHash = MessageHashUtils.toEthSignedMessageHash(msgHash);
-        address signer = ECDSA.recover(ethMsgHash, signature);
+    function _recoverSigner(bytes memory message, bytes memory signature) internal pure returns (address) {
+        bytes32 ethSignMsgHash = MessageHashUtils.toEthSignedMessageHash(keccak256(message));
+        return ECDSA.recover(ethSignMsgHash, signature);
+    }
 
+
+    // function getIMEIOwner(bytes32 imeiHash) external view returns (address) {
+    //     require(imeiHashToOwner[imeiHash] != address(0), "IMEI not registered");
+    //     return imeiHashToOwner[imeiHash];
+    // }
+
+    function registerIMEI(bytes32 imeiHash, address to, uint nonce, bytes calldata signature) external onlyContractOwner notRegistered(imeiHash) {
+        _validNonce(to, nonce);
+        bytes memory message = abi.encodePacked("registerIMEI ", imeiHash, " to ", to, " (nonce: ", Strings.toString(nonce), ")");
+        address signer = _recoverSigner(message, signature);
         require(signer == to, "Signer discord");
-        emit DebugPacked(packedMsg, msgHash, ethMsgHash, signer);
-        IMEIHashToOwner[IMEIHash] = signer;
+        imeiHashToOwner[imeiHash] = signer;
     }
 
-    // 소유권 이전
-    function transferIMEI(bytes32 IMEIHash, address from, address to, uint nonce, bytes calldata signature) external {
-        require(nonce == userNonce[from] + 1 , "Invalid nonce");
-        userNonce[from]++;
-
-        bytes32 ethMsgHash = MessageHashUtils.toEthSignedMessageHash(keccak256(abi.encodePacked("transferIMEI", IMEIHash, from, to, nonce)));
-        address signer = ECDSA.recover(ethMsgHash, signature);
-        
-        _requireIMEIOwner(IMEIHash, signer);
-
-        IMEIHashToOwner[IMEIHash] = to;
+    function transferIMEI(bytes32 imeiHash, address from, address to, uint nonce, bytes calldata signature) external {
+        _validNonce(from, nonce);
+        bytes memory message = abi.encodePacked("transferIMEI ", imeiHash, " from ", from, " to ", to, " (nonce: ", Strings.toString(nonce), ")");
+        address signer = _recoverSigner(message, signature);
+        require(signer == from, "Signer discord");
+        _onlyIMEIOwner(imeiHash, signer);
+        imeiHashToOwner[imeiHash] = to; 
     }
 
     function tradeIMEI(TradeInfo calldata tradeInfo, SellerInfo calldata sellerInfo, BuyerInfo calldata buyerInfo) external {
-        require(sellerInfo.nonce == userNonce[tradeInfo.seller] + 1, "Invalid seller nonce");
-        require(buyerInfo.nonce == userNonce[tradeInfo.buyer] + 1, "Invalid buyer nonce");
-        userNonce[tradeInfo.seller]++; 
-        userNonce[tradeInfo.buyer]++;
+        _validNonce(tradeInfo.seller, sellerInfo.nonce);
+        _validNonce(tradeInfo.buyer, buyerInfo.nonce);
         
-        // 처음에 등록안해도 false인가?
-        require(IMEIHashToEscrow[tradeInfo.IMEIHash].locked == false, "This IMEI is trading!");
+        require(imeiHashToEscrow[tradeInfo.imeiHash].isPending == false, "This IMEI is trading!");
+        bytes memory sellerMessage = abi.encodePacked(
+            "tradeIMEI ", tradeInfo.imeiHash, 
+            " from ", tradeInfo.seller, 
+            " to ", tradeInfo.buyer, 
+            " price: ", Strings.toString(tradeInfo.price), 
+            " (nonce: ", Strings.toString(sellerInfo.nonce), ")"
+        );
+        bytes memory buyerMessage = abi.encodePacked(
+            "tradeIMEI ", tradeInfo.imeiHash, 
+            " from ", tradeInfo.seller, 
+            " to ", tradeInfo.buyer, 
+            " price: ", Strings.toString(tradeInfo.price), 
+            " (nonce: ", Strings.toString(buyerInfo.nonce), ")"
+        );
+        address sellerSigner = _recoverSigner(sellerMessage, sellerInfo.signature);
+        address buyerSigner = _recoverSigner(buyerMessage, buyerInfo.signature);
+        require(sellerSigner == tradeInfo.seller, "seller discord");
+        require(buyerSigner == tradeInfo.buyer, "buyer discord");
 
-        bytes32 ethMsgHashSeller = MessageHashUtils.toEthSignedMessageHash(keccak256(abi.encodePacked(
-            "tradeIMEI", tradeInfo.IMEIHash, tradeInfo.seller, tradeInfo.buyer, tradeInfo.price, sellerInfo.nonce
-        )));
-        bytes32 ethMsgHashBuyer = MessageHashUtils.toEthSignedMessageHash(keccak256(abi.encodePacked(
-            "tradeIMEI", tradeInfo.IMEIHash, tradeInfo.seller, tradeInfo.buyer, tradeInfo.price, buyerInfo.nonce
-        )));
-
-        address sellingSigner = ECDSA.recover(ethMsgHashSeller, sellerInfo.signature);
-        address buyingSigner = ECDSA.recover(ethMsgHashBuyer, buyerInfo.signature);
-
-        require(sellingSigner == tradeInfo.seller, "seller discord");
-        require(buyingSigner == tradeInfo.buyer, "buyer discord");
-
-        IMEIHashToOwner[tradeInfo.IMEIHash] = tradeInfo.buyer;
+        imeiHashToOwner[tradeInfo.imeiHash] = tradeInfo.buyer;
         require(token.balanceOf(tradeInfo.buyer) >= tradeInfo.price, "Buyer lack of Balance");
         token.permit(tradeInfo.buyer, address(this), tradeInfo.price, buyerInfo.deadline, buyerInfo.v, buyerInfo.r, buyerInfo.s);
         token.transferFrom(tradeInfo.buyer, address(this), tradeInfo.price);
-        IMEIHashToEscrow[tradeInfo.IMEIHash] = Escrow(tradeInfo.seller, tradeInfo.buyer, tradeInfo.price, true);
+        imeiHashToEscrow[tradeInfo.imeiHash] = Escrow(tradeInfo.seller, tradeInfo.buyer, tradeInfo.price, true);
     }
 
-    function confirmTrade(bytes32 IMEIHash, bytes calldata signature) external {
-        bytes32 msgHash = MessageHashUtils.toEthSignedMessageHash(keccak256(abi.encodePacked("confirmTrade", IMEIHash)));
-        address signer = ECDSA.recover(msgHash, signature);
-        require(IMEIHashToEscrow[IMEIHash].buyer == signer, "Not buyer");
-        require(IMEIHashToEscrow[IMEIHash].locked == true, "Already confirmed");
-        token.transfer(IMEIHashToEscrow[IMEIHash].seller, IMEIHashToEscrow[IMEIHash].price);
-        delete IMEIHashToEscrow[IMEIHash];
+    function confirmTrade(bytes32 imeiHash, uint nonce, bytes calldata signature) external {
+        bytes memory message = abi.encodePacked("confirmTrade ", imeiHash, " (nonce: ", Strings.toString(nonce), ")");
+        address buyerSigner = _recoverSigner(message, signature);
+        require(imeiHashToEscrow[imeiHash].buyer == buyerSigner, "Not buyer");
+        require(imeiHashToEscrow[imeiHash].isPending == true, "Trade already completed");
+        token.transfer(imeiHashToEscrow[imeiHash].seller, imeiHashToEscrow[imeiHash].price);
+        delete imeiHashToEscrow[imeiHash];
     }
 }
