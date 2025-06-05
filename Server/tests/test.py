@@ -45,3 +45,6 @@ def test_get_imei_owner():
     params = {"imei_hash": imei_hash}
     response = app.post("/get", json=params)
     print(response.text)
+
+test_registerIMEI()
+test_get_imei_owner()
