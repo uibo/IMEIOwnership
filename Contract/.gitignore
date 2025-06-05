@@ -13,8 +13,5 @@ docs/
 # Dotenv file
 .env
 
-# foundry library
-lib/
-
 # Anvil 상태 스냅샷
 state.json
