@@ -15,7 +15,9 @@ RPC_URL = os.getenv("RPC_URL")
 
 with open(BASE_DIR/"IMEIOwnership.abi.json", 'r') as f:
     ABI = json.load(f)
-
+    
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 server_account = Account.from_key(SERVER_PRIVATE_KEY)
 contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=ABI)
+
+
