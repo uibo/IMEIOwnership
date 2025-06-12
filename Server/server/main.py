@@ -1,13 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from tinydb import TinyDB, Query
 from web3 import Web3
 
-from server.model import RegisterIMEIRequest, GetIMEIOwnerRequest, TransferIMEIRequest, TradeIMEIRequest, ConfirmTradeRequest
-from server.config.config import w3, contract, server_account
-from server.function import registerIMEI, getIMEIOwner, transferIMEI, tradeIMEI, confirmTrade
+from server.model import RegisterIMEIRequest, GetIMEIOwnerRequest, TransferIMEIRequest, TradeIMEIRequest, ConfirmTradeRequest, MintTokenRequest, TradeInfoRequest, BuyerQuery, BuyerInfoMatch
+from server.config.config import w3, contract, server_account, contract_currency
+from server.function import registerIMEI, getIMEIOwner, transferIMEI, tradeIMEI, confirmTrade, mint
 
 
 app = FastAPI()
+db = TinyDB("trades.json")
+trade_table = db.table("trades")
+trade_table.truncate()
+query = Query()
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +41,56 @@ def get_imei_owner(req: GetIMEIOwnerRequest):
     return getIMEIOwner(w3, contract, imei_hash)
 
 
+@app.post("/tradeinfo")
+def store_tradeInfo(req: TradeInfoRequest):
+    imei = req.tradeInfo.imei_hash
+    if trade_table.contains(query.tradeInfo["imei_hash"] == imei):
+        raise HTTPException(status_code=400, detail="Trade already exists with this IMEI hash.")
+    trade_table.insert(req.model_dump())
+    return {"status": "stored"}
+
+@app.post("/tradeinfo/list")
+def get_trades_by_buyer(req: BuyerQuery):
+    buyer = req.buyer.lower()
+
+    filtered_trades = trade_table.search(query.tradeInfo["buyer"] == buyer)
+    if not filtered_trades:
+        return {"trades": [], "message": "No trades found for this buyer."}
+    return {"trades": filtered_trades}
+
+@app.post("/buyerinfo")
+def match_buyerInfo(req: BuyerInfoMatch):
+    imei = req.imei_hash
+    results = trade_table.search(query.tradeInfo["imei_hash"] == imei)
+    if results:
+        trade_entry = results[0]  # 첫 번째 매치
+
+        tradeInfo = trade_entry.get("tradeInfo", {})
+        tradeInfo = {
+            "imeiHash": Web3.to_bytes(hexstr=tradeInfo["imei_hash"]),
+            "seller": Web3.to_checksum_address(tradeInfo["seller"]),
+            "buyer": Web3.to_checksum_address(tradeInfo["buyer"]),
+            "price": int(tradeInfo["price"])
+        }
+        sellerInfo = trade_entry.get("sellerInfo", {})
+        sellerInfo = {
+            "nonce": int(sellerInfo["nonce"]),
+            "signature": Web3.to_bytes(hexstr=sellerInfo["signature"])
+        }
+        buyerInfo = req.buyerInfo.model_dump()
+        buyerInfo = {
+            "nonce": int(buyerInfo["nonce"]),
+            "signature": Web3.to_bytes(hexstr=buyerInfo["signature"]),
+            "v": int(buyerInfo["v"]),
+            "r": Web3.to_bytes(hexstr=buyerInfo["r"]),
+            "s": Web3.to_bytes(hexstr=buyerInfo["s"]),
+            "deadline": int(buyerInfo["deadline"])
+        }
+
+        tx_hash = tradeIMEI(w3, contract, server_account.address, server_account.key, tradeInfo, sellerInfo, buyerInfo)
+        return {"status": "성공", "tx_hash": tx_hash}
+    return {"status": "실패", "message": "일치하는 거래 정보가 없습니다."}
+
 @app.post("/transfer")
 def transfer_imei(req: TransferIMEIRequest):
     imei_hash = Web3.to_bytes(hexstr=req.imei_hash)
@@ -43,11 +98,6 @@ def transfer_imei(req: TransferIMEIRequest):
     to_addr = Web3.to_bytes(hexstr=req.to_addr)
     nonce_int = int(req.nonce)
     signature_bytes = Web3.to_bytes(hexstr=req.signature)
-    print("imei_hash: ", imei_hash)
-    print("from_addr: ", from_addr)
-    print("to_addr: ", to_addr)
-    print("nonce_int: ", nonce_int)
-    print("signature_bytes: ", signature_bytes)
     tx_hash = transferIMEI(
         w3=w3,
         contract=contract,
@@ -58,44 +108,6 @@ def transfer_imei(req: TransferIMEIRequest):
         to_addr=to_addr,
         nonce=nonce_int,
         signature=signature_bytes
-    )
-    return {"tx_hash": tx_hash}
-
-
-@app.post("/trade")
-def trade_imei(req: TradeIMEIRequest):
-    imei_hash_bytes = Web3.to_bytes(hexstr=req.imei_hash)
-    seller_addr = Web3.to_checksum_address(req.seller)
-    buyer_addr = Web3.to_checksum_address(req.buyer)
-    price_int = int(req.price)
-
-    seller_nonce_int = int(req.seller_nonce)
-    seller_sig_bytes = Web3.to_bytes(hexstr=req.seller_signature)
-
-    buyer_nonce_int = int(req.buyer_nonce)
-    buyer_sig_bytes = Web3.to_bytes(hexstr=req.buyer_signature)
-    buyer_v_int = int(req.buyer_v)
-    buyer_r_bytes = Web3.to_bytes(hexstr=req.buyer_r)
-    buyer_s_bytes = Web3.to_bytes(hexstr=req.buyer_s)
-    buyer_deadline_int = int(req.buyer_deadline)
-
-    tx_hash = tradeIMEI(
-        w3=w3,
-        contract=contract,
-        sender=server_account.address,
-        private_key=server_account.key,
-        imei_hash=imei_hash_bytes,
-        seller=seller_addr,
-        buyer=buyer_addr,
-        price=price_int,
-        seller_nonce=seller_nonce_int,
-        seller_signature=seller_sig_bytes,
-        buyer_nonce=buyer_nonce_int,
-        buyer_signature=buyer_sig_bytes,
-        buyer_v=buyer_v_int,
-        buyer_r=buyer_r_bytes,
-        buyer_s=buyer_s_bytes,
-        buyer_deadline=buyer_deadline_int
     )
     return {"tx_hash": tx_hash}
 
@@ -116,3 +128,10 @@ def confirm_trade(req: ConfirmTradeRequest):
         signature=signature_bytes
     )
     return {"tx_hash": tx_hash}
+
+@app.post("/mint")
+def mint_token(req: MintTokenRequest):
+    to = Web3.to_bytes(hexstr=req.to)
+    amount = int(req.amount)
+    tx_hash = mint(w3, contract_currency, server_account.address, server_account.key, to, amount)
+    return tx_hash

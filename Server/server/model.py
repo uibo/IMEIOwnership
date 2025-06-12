@@ -35,3 +35,39 @@ class ConfirmTradeRequest(BaseModel):
     imei_hash: str    # 32바이트 hex 문자열
     nonce: str        # nonce (문자열)
     signature: str    # 서명 hex 문자열
+
+class MintTokenRequest(BaseModel):
+    to: str
+    amount: str
+
+class TradeInfo(BaseModel):
+    imei_hash: str
+    seller: str
+    buyer: str
+    price: str
+
+class SellerInfo(BaseModel):
+    nonce: str
+    signature: str
+
+class TradeInfoRequest(BaseModel):
+    tradeInfo: TradeInfo
+    sellerInfo: SellerInfo
+
+class BuyerQuery(BaseModel):
+    buyer: str
+
+class BuyerInfo(BaseModel):
+    nonce: str
+    signature: str
+    v: str
+    r: str
+    s: str
+    deadline: str
+
+class BuyerInfoMatch(BaseModel):
+    buyerInfo: BuyerInfo
+    imei_hash: str
+
+
+
