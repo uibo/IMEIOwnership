@@ -71,7 +71,7 @@ const confirmation_trade = async (index) => {
     signature,
   }
   const res = await confirm_trade(payload)
-  alert("거래 종료: ", res.tx_hash)
+  alert("거래 완료: ", res.tx_hash)
 }
 </script>
 <style scoped>

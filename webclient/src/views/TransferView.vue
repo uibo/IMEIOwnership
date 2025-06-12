@@ -1,8 +1,12 @@
 <template>
     <h1>IMEI 전송</h1>
     <form @submit.prevent="submitForm">
-        <label>IMEI:</label>
-        <input v-model="imei" required />
+      <div class="imei-row">
+        <input v-model="imei" :disabled="imeiDisabled" required />
+        <button type="button" class="toggle-btn" @click="toggleIMEI">
+          {{ imeiDisabled ? '✎' : '✔' }}
+        </button>
+      </div>
         <label>from:</label>
         <input v-model="from" disabled required />
         <label>To:</label>
@@ -14,14 +18,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 import { fetch_to_and_nonce, make_imei_hash, make_transfer_signature } from '@/composables/function'
 import { transfer_imei } from '@/api/api'
 
-const imei = ref('')
+const imei = ref(inject("deviceIMEI"))
 const from = ref('')
 const to = ref('')
 const nonce = ref('')
+const imeiDisabled = ref(true)
+
+const toggleIMEI = () => {
+  imeiDisabled.value = !imeiDisabled.value
+}
 
 const submitForm = async () => {
   const imei_hash = make_imei_hash(imei.value)
@@ -66,5 +75,29 @@ button[type="submit"] {
   padding: 0.6rem;
   font-weight: bold;
   width: 100%;
+}
+
+.imei-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.imei-row input {
+  flex: 1;
+}
+
+.toggle-btn {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background-color: #ddd;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.toggle-btn:hover {
+  background-color: #ccc;
 }
 </style>
