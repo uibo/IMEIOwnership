@@ -5,6 +5,9 @@
         <p class="word-break-wrap">
           <strong>Account:</strong> {{ account ? account : 'disconnected' }}
         </p>
+        <p v-if="account">
+          <strong>Token Balance:</strong> {{ Balance }}
+        </p>
         <button @click="account ? disconnectWallet() : connectWallet()">
           {{ account ? 'Disconnect' : 'Connect MetaMask' }}
         </button>
@@ -15,6 +18,8 @@
         <li><router-link to="/register">등록</router-link></li>
         <li><router-link to="/itemlist">조회</router-link></li>
         <li><router-link to="/transfer">전송</router-link></li>
+        <li><router-link to="/trade">거래</router-link></li>
+        <li><router-link to="/buy">구매</router-link></li>
       </ul>
     </aside>
     <main class="content">
@@ -25,14 +30,17 @@
 
 <script setup>
 import { ref } from 'vue'
+import { getBalanceOf } from './composables/function'
 
 const account = ref('')
+const Balance = ref('Loading...')
 
 const connectWallet = async () => {
   if (window.ethereum) {
     try {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
       account.value = accounts[0]
+      Balance.value = await getBalanceOf()
     } catch (err) {
       console.error(err)
     }

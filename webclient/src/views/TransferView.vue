@@ -30,11 +30,6 @@ const submitForm = async () => {
   nonce.value = temp2.toLowerCase()
   to.value = to.value.toLowerCase()
   const signature = await make_transfer_signature(imei_hash, from.value, to.value, nonce.value)
-  console.log("imei_hash: ", imei_hash)
-  console.log("from: ", from.value)
-  console.log("to: ", to.value)
-  console.log("nonce: ", nonce.value)
-  console.log("signature: ", signature)
   const payload = {
     imei_hash,
     from_addr: from.value,
