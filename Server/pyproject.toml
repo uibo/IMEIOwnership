@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "server"
+version = "0.1.0"
+description = ""
+authors = ["uibo <boui000210@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+web3 = "^7.11.1"
+fastapi = "^0.115.12"
+uvicorn = "^0.34.2"
+dotenv = "^0.9.9"
+httpx = "^0.28.1"
+tinydb = "^4.8.2"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
