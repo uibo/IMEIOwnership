@@ -20,7 +20,7 @@ def getIMEIOwner(w3: Web3, contract: Contract, imei_hash: bytes) -> str:
     imei_owner = contract.functions.imeiHashToOwner(imei_hash).call()
     return imei_owner
 
-def transferIMEI(w3: Web3,contract: Contract,sender: str,private_key: str,imei_hash: bytes,from_addr: str,to_addr: str,nonce: int,signature: bytes
+def transferIMEI(w3: Web3, contract: Contract, sender: str, private_key: str, imei_hash: bytes, from_addr: bytes, to_addr: bytes, nonce: int, signature: bytes
 ) -> str:
     """
     Solidity: transferIMEI(bytes32 imeiHash, address from, address to, uint nonce, bytes calldata signature)

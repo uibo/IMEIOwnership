@@ -27,7 +27,6 @@ def register_imei(req: RegisterIMEIRequest):
     to = Web3.to_bytes(hexstr=req.to)
     nonce = int(req.nonce)
     signature = Web3.to_bytes(hexstr=req.signature)
-    req.imei_hash
     tx_hash = registerIMEI(w3, contract, server_account.address, server_account.key, imei_hash, to, nonce, signature)
     return tx_hash
 
@@ -39,18 +38,22 @@ def get_imei_owner(req: GetIMEIOwnerRequest):
 
 @app.post("/transfer")
 def transfer_imei(req: TransferIMEIRequest):
-    imei_hash_bytes = Web3.to_bytes(hexstr=req.imei_hash)
-    from_addr = Web3.to_checksum_address(req.from_addr)
-    to_addr = Web3.to_checksum_address(req.to_addr)
+    imei_hash = Web3.to_bytes(hexstr=req.imei_hash)
+    from_addr = Web3.to_bytes(hexstr=req.from_addr)
+    to_addr = Web3.to_bytes(hexstr=req.to_addr)
     nonce_int = int(req.nonce)
     signature_bytes = Web3.to_bytes(hexstr=req.signature)
-
+    print("imei_hash: ", imei_hash)
+    print("from_addr: ", from_addr)
+    print("to_addr: ", to_addr)
+    print("nonce_int: ", nonce_int)
+    print("signature_bytes: ", signature_bytes)
     tx_hash = transferIMEI(
         w3=w3,
         contract=contract,
         sender=server_account.address,
         private_key=server_account.key,
-        imei_hash=imei_hash_bytes,
+        imei_hash=imei_hash,
         from_addr=from_addr,
         to_addr=to_addr,
         nonce=nonce_int,
