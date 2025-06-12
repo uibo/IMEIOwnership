@@ -127,6 +127,8 @@ def confirm_trade(req: ConfirmTradeRequest):
         nonce=nonce_int,
         signature=signature_bytes
     )
+    if tx_hash:
+        trade_table.remove(query.tradeInfo["imei_hash"] == req.imei_hash)
     return {"tx_hash": tx_hash}
 
 @app.post("/mint")
