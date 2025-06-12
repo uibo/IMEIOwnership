@@ -44,10 +44,13 @@ const toggleTo = () => {
 }
 
 
-
 const submitForm = async () => {
   [to.value, nonce.value] = await fetch_to_and_nonce()
   const { imei_hash, signature } = await makeSignature(imei.value, to.value, nonce.value)
+  console.log("imei_hash: ", imei_hash)
+  console.log("to: ", to.value)
+  console.log("nonce: ", nonce.value)
+  console.log("signature: ", signature)
   const payload = {
     imei_hash,
     to: to.value,

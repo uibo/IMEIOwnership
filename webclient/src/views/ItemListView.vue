@@ -29,7 +29,6 @@ const result = ref(null)
 
 const submitForm = async () => {
     const imei_hash = make_imei_hash(imei.value)
-    console.log(imei_hash)
     const payload = {imei_hash}
   try {
     const res = await get_imei_owner(payload)

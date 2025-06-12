@@ -10,12 +10,24 @@ export async function makeSignature(imei, to, nonce) {
   const imei_hash = make_imei_hash(imei)
   to = to.toLowerCase() 
   const message = `registerIMEI ${imei_hash} to ${to} nonce ${nonce}`
-  const from = (await window.ethereum.request({method: 'eth_requestAccounts'}))[0]
+  const signer = (await window.ethereum.request({method: 'eth_requestAccounts'}))[0]
   const signature = await window.ethereum.request({
     method: 'personal_sign',
-    params: [message, from]
+    params: [message, signer]
   })
   return { imei_hash, signature }
+}
+
+export async function make_transfer_signature(imei_hash, from, to, nonce) {
+  from = from.toLowerCase()
+  to = to.toLowerCase()
+  const message = `transferIMEI ${imei_hash} from ${from} to ${to} nonce ${nonce}`
+  const signer = (await window.ethereum.request({method: 'eth_requestAccounts'}))[0]
+  const signature = await window.ethereum.request({
+    method: 'personal_sign',
+    params: [message, signer]
+  })
+  return signature
 }
 
 export async function fetch_to_and_nonce() {
