@@ -1,17 +1,21 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from web3 import Web3
 
 from server.model import RegisterIMEIRequest, GetIMEIOwnerRequest, TransferIMEIRequest, TradeIMEIRequest, ConfirmTradeRequest
 from server.config.config import w3, contract, server_account
-from server.function import (
-    registerIMEI,
-    getIMEIOwner,
-    transferIMEI,
-    tradeIMEI,
-    confirmTrade
-)
+from server.function import registerIMEI, getIMEIOwner, transferIMEI, tradeIMEI, confirmTrade
+
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Vite dev 서버 주소
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def main_page():
@@ -29,7 +33,8 @@ def register_imei(req: RegisterIMEIRequest):
 
 @app.post("/get")
 def get_imei_owner(req: GetIMEIOwnerRequest):
-    return getIMEIOwner(w3, contract, req.imei_hash)
+    imei_hash = Web3.to_bytes(hexstr=req.imei_hash)
+    return getIMEIOwner(w3, contract, imei_hash)
 
 
 @app.post("/transfer")
