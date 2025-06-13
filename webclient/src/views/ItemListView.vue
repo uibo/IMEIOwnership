@@ -2,6 +2,7 @@
   <h1>IMEI 조회</h1>
   <br />
   <h2 style="white-space: nowrap;">현재 장치의 IMEI: {{ deviceIMEI }}</h2>
+  <h3>현재 장치의 IMEI_hash: {{ imeiHash }}</h3>
   <br />
   <br />
   <h3>IMEI 소유자 조회</h3>
@@ -18,13 +19,14 @@
 
 
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import { make_imei_hash } from '@/composables/function'
 import { get_imei_owner } from '@/api/api'
 
 const deviceIMEI = inject("deviceIMEI")
 
 const imei = ref('')
+const imeiHash = ref('')
 const result = ref(null)
 
 const submitForm = async () => {
@@ -37,6 +39,11 @@ const submitForm = async () => {
     result.value = null
   }
 }
+
+onMounted(async() => {
+  imeiHash.value = await make_imei_hash(deviceIMEI);
+})
+
 </script>
 
 <style scoped>
