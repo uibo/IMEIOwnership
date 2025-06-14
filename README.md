@@ -10,7 +10,7 @@ Web3를 활용하여 구축한 IMEI 소유권 증명 및 거래 시스템
 ### 프로젝트 구조
 - Contract/ # Solidity 스마트 컨트랙트 [Contract/README.md](./Contract/README.md) 참고
 - Server/ fastapi 서버 [Server/README.md](./Server/README.md) 참고
-- Client/ vue 웹 클라이언트 [Client/README.md](./Client/README.md) 참고
+- webclient/ vue 웹 클라이언트 [vueclient/README.md](./Client/README.md) 참고
 ## 주요 기능
 **IMEI 등록**  
 **IMEI 전송**  
