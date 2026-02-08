@@ -17,3 +17,13 @@ Web3를 활용하여 구축한 IMEI 소유권 증명 및 거래 시스템
 **IMEI 소유자 조회**  
 **IMEI 거래 진행**  
 **IMEI 거래 확정**
+## 서비스 화면
+<img width="400" height="600" alt="image" src="https://github.com/user-attachments/assets/1b91b9df-1ae8-4bd6-958b-1ba3a3c711f5" />
+<img width="400" height="600" alt="image" src="https://github.com/user-attachments/assets/e81b6966-98bb-4a6b-842c-182ab2c5a8af" />
+<img width="400" height="600" alt="image" src="https://github.com/user-attachments/assets/9aa2f94c-6170-4b5b-8a05-f31ce5fac03d" />
+<img width="400" height="600" alt="image" src="https://github.com/user-attachments/assets/a7beb4e7-e274-4aac-827a-371ed523c5c0" />
+<img width="400" height="600" alt="image" src="https://github.com/user-attachments/assets/6bb923be-d1c3-49ed-9479-9ab5de8b4f41" />
+
+
+
+
